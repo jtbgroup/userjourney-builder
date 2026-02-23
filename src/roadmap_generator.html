@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur de Roadmap Draw.io - Version Finale</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        
+        .steps::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #e0e0e0;
+            z-index: 0;
+        }
+        
+        .step {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            flex: 1;
+        }
+        
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            color: #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .step.active .step-circle {
+            background: #667eea;
+            color: white;
+        }
+        
+        .step.completed .step-circle {
+            background: #27AE60;
+            color: white;
+        }
+        
+        .step-label {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .step.active .step-label,
+        .step.completed .step-label {
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .section {
+            display: none;
+            margin-bottom: 25px;
+        }
+        
+        .section.active {
+            display: block;
+        }
+        
+        .section-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .file-input-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .file-input-label:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+        }
+        
+        .file-input-label.has-file {
+            background: #e7f5ff;
+            border-color: #667eea;
+            border-style: solid;
+            color: #667eea;
+        }
+        
+        select, input[type=text], input[type=number] {
+            width: 100%;
+            padding: 12px 15px;
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #333;
+            transition: all 0.2s;
+            margin-bottom: 10px;
+        }
+        
+        select:hover, input[type=text]:hover, input[type=number]:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+        }
+        
+        select:focus, input[type=text]:focus, input[type=number]:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #fff;
+        }
+        
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .checkbox-item:hover {
+            background: #e7f5ff;
+        }
+        
+        .checkbox-item input[type=checkbox] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            margin: 0;
+        }
+        
+        .checkbox-item label {
+            cursor: pointer;
+            flex: 1;
+            font-size: 13px;
+            color: #333;
+            margin: 0;
+        }
+        
+        .color-threshold-group {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .threshold-item {
+            display: grid;
+            grid-template-columns: 2fr 1fr 100px;
+            gap: 10px;
+            align-items: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .threshold-label {
+            font-size: 13px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        input[type=color] {
+            height: 40px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .color-preview {
+            width: 60px;
+            height: 40px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #e9ecef;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #dee2e6;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            color: #999;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+        
+        .loader {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .loader.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        
+        .column-mapping {
+            display: grid;
+            gap: 15px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .mapping-item {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .mapping-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .wp-mapping-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 8px;
+            border: 2px solid #ffc107;
+        }
+        
+        .wp-mapping-item {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗺️ Générateur de Roadmap Draw.io</h1>
+        <p class="subtitle">Version finale - Configuration complète</p>
+        
+        <div class="steps">
+            <div class="step active" id="step1">
+                <div class="step-circle">1</div>
+                <div class="step-label">Fichier</div>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-circle">2</div>
+                <div class="step-label">Colonnes</div>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-circle">3</div>
+                <div class="step-label">Filtres</div>
+            </div>
+            <div class="step" id="step4">
+                <div class="step-circle">4</div>
+                <div class="step-label">Couleurs</div>
+            </div>
+            <div class="step" id="step5">
+                <div class="step-circle">5</div>
+                <div class="step-label">Générer</div>
+            </div>
+        </div>
+        
+        <!-- Étape 1: Fichier -->
+        <div class="section active" id="section1">
+            <div class="section-title">📁 Étape 1: Charger le fichier Excel</div>
+            <div class="file-input-wrapper">
+                <input type="file" id="excelFile" accept=".xlsx,.xls" />
+                <label for="excelFile" class="file-input-label" id="fileLabel">
+                    <span>📄</span>
+                    <span id="fileName">Cliquez pour choisir un fichier Excel</span>
+                </label>
+            </div>
+            
+            <div id="sheetSelection" style="display: none; margin-top: 15px;">
+                <label class="mapping-label">Onglet Excel:</label>
+                <select id="sheetSelect"></select>
+            </div>
+        </div>
+        
+        <!-- Étape 2: Mapping des colonnes -->
+        <div class="section" id="section2">
+            <div class="section-title">📊 Étape 2: Mapper les colonnes</div>
+            <p class="help-text">Indiquez quelle colonne Excel correspond à chaque donnée</p>
+            
+            <div class="column-mapping">
+                <div class="mapping-item">
+                    <label class="mapping-label">User Journey:</label>
+                    <select id="colUserJourney"></select>
+                </div>
+                <div class="mapping-item">
+                    <label class="mapping-label">Epic:</label>
+                    <select id="colEpic"></select>
+                </div>
+                <div class="mapping-item">
+                    <label class="mapping-label">Stage:</label>
+                    <select id="colStage"></select>
+                </div>
+                <div class="mapping-item">
+                    <label class="mapping-label">Substage:</label>
+                    <select id="colSubstage"></select>
+                </div>
+                <div class="mapping-item">
+                    <label class="mapping-label">Description:</label>
+                    <select id="colDescription"></select>
+                </div>
+                <div class="mapping-item">
+                    <label class="mapping-label">Work Package (Target):</label>
+                    <select id="colWorkPackage"></select>
+                </div>
+            </div>
+            
+            <div class="wp-mapping-section" id="wpMappingSection" style="display: none;">
+                <div class="section-title">🔗 Mapping Work Package → Progression</div>
+                <p class="help-text">Pour chaque Work Package détecté, indiquez quelle colonne contient sa progression</p>
+                <div id="wpMappingContainer"></div>
+            </div>
+        </div>
+        
+        <!-- Étape 3: Filtres -->
+        <div class="section" id="section3">
+            <div class="section-title">🎯 Étape 3: Sélectionner les filtres</div>
+            
+            <div style="margin-bottom: 20px;">
+                <label class="mapping-label">User Journey (sélection multiple):</label>
+                <p class="help-text">Sélectionnez un ou plusieurs User Journey à inclure dans le diagramme</p>
+                <div class="checkbox-group" id="userJourneyCheckboxes"></div>
+            </div>
+            
+            <div>
+                <label class="mapping-label">Work Packages à afficher:</label>
+                <p class="help-text">Sélectionnez les Work Packages à afficher dans le diagramme</p>
+                <div class="checkbox-group" id="workPackageCheckboxes"></div>
+            </div>
+        </div>
+        
+        <!-- Étape 4: Couleurs -->
+        <div class="section" id="section4">
+            <div class="section-title">🎨 Étape 4: Configurer les couleurs de progression</div>
+            <p class="help-text">Définissez les seuils et les couleurs pour chaque niveau de progression</p>
+            
+            <div class="color-threshold-group">
+                <div class="threshold-item">
+                    <div class="threshold-label">= 0%</div>
+                    <input type="color" id="color0" value="#FF0000" />
+                    <div class="color-preview" id="preview0" style="background: #FF0000;">0%</div>
+                </div>
+                
+                <div class="threshold-item">
+                    <div class="threshold-label">> 0% - <input type="number" id="threshold1" value="40" min="1" max="99" style="width: 60px; display: inline-block; padding: 4px; margin: 0 5px;" />%</div>
+                    <input type="color" id="color1" value="#FF6600" />
+                    <div class="color-preview" id="preview1" style="background: #FF6600;">20%</div>
+                </div>
+                
+                <div class="threshold-item">
+                    <div class="threshold-label">≥ <span id="threshold1Display">40</span>% - <input type="number" id="threshold2" value="60" min="1" max="99" style="width: 60px; display: inline-block; padding: 4px; margin: 0 5px;" />%</div>
+                    <input type="color" id="color2" value="#FF9900" />
+                    <div class="color-preview" id="preview2" style="background: #FF9900;">50%</div>
+                </div>
+                
+                <div class="threshold-item">
+                    <div class="threshold-label">≥ <span id="threshold2Display">60</span>% - <input type="number" id="threshold3" value="80" min="1" max="99" style="width: 60px; display: inline-block; padding: 4px; margin: 0 5px;" />%</div>
+                    <input type="color" id="color3" value="#FFCC00" />
+                    <div class="color-preview" id="preview3" style="background: #FFCC00;">70%</div>
+                </div>
+                
+                <div class="threshold-item">
+                    <div class="threshold-label">≥ <span id="threshold3Display">80</span>% - < 100%</div>
+                    <input type="color" id="color4" value="#99CC00" />
+                    <div class="color-preview" id="preview4" style="background: #99CC00;">90%</div>
+                </div>
+                
+                <div class="threshold-item">
+                    <div class="threshold-label">= 100%</div>
+                    <input type="color" id="color5" value="#00CC00" />
+                    <div class="color-preview" id="preview5" style="background: #00CC00;">100%</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Étape 5: Génération -->
+        <div class="section" id="section5">
+            <div class="section-title">✨ Étape 5: Génération du diagramme</div>
+            <p class="help-text">Vérifiez votre configuration et générez le diagramme</p>
+            
+            <div id="configSummary" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                <!-- Résumé de la config sera inséré ici -->
+            </div>
+            
+            <button class="btn btn-primary" id="generateBtn" style="width: 100%;">
+                🚀 Générer le diagramme
+            </button>
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn btn-secondary" id="prevBtn" style="display: none;">← Précédent</button>
+            <button class="btn btn-primary" id="nextBtn" disabled>Suivant →</button>
+        </div>
+        
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px; color: #666;">Génération en cours...</p>
+        </div>
+        
+        <div class="status" id="status"></div>
+    </div>
+
+    <script src="roadmap_generator.js"></script>
+</body>
+</html>
