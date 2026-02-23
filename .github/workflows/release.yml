@@ -4,7 +4,10 @@ name: Create Release
 on:
   push:
     tags:
-      - 'v*'  # Se déclenche quand tu push un tag comme v1.0.0
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
   release:
